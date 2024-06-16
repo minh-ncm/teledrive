@@ -1,0 +1,22 @@
+[project]
+name = "teledrive"
+version = "0.1.0"
+description = "Default template for PDM package"
+authors = [
+    {name = "mingnh", email = "minh.ncm.201@gmail.com"},
+]
+dependencies = [
+    "PySide6>=6.7.1",
+    "python-dotenv>=1.0.1",
+    "sqlalchemy>=2.0.30",
+    "telethon>=1.36.0",
+    "pydantic-settings>=2.3.3",
+    "rich>=13.7.1",
+]
+requires-python = "<3.13,>=3.10.0"
+readme = "README.md"
+license = {text = "MIT"}
+
+
+[tool.pdm]
+distribution = false
