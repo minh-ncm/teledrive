@@ -14,6 +14,7 @@ class FileSchema:
 @dataclass
 class FileChunk:
     path: str
+    size: int
 
 
 

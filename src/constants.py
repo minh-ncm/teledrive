@@ -2,7 +2,7 @@ import os
 
 
 # FILE_MAX_SIZE = 2_097_152_000 # 2GB
-FILE_MAX_SIZE = 100
+FILE_MAX_SIZE = 500_000_000
 
 LOCAL_WORK_DIR = "files"
 LOCAL_UPLOAD_DIR = os.path.join(LOCAL_WORK_DIR, "upload")
