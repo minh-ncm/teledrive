@@ -11,6 +11,9 @@ import math
 from files import split_file_into_chunks, upload_file
 from logger import get_logger
 from rich.progress import Progress
+from asyncio import Task
+from typing import List
+from telethon.tl.patched import Message
 
 
 logger = get_logger(__name__)
@@ -23,16 +26,22 @@ client = TelegramClient(
 
 async def main():
     await client.start()
-    file_path = r"D:\New folder\c\MDCM-0011.mp4"
-    file_chunks = split_file_into_chunks(file_path)
     entity = await client.get_entity(PeerChat(4245312988))
-
+    file_path = ".env"
+    namespace = "/top/top2"
+    file_chunks = split_file_into_chunks(file_path, namespace)
     with Progress() as progress:
-        tasks = []
+        tasks: List[Task] = []
         async for file in file_chunks:
-            # await upload_file(client, entity, file)
             tasks.append(asyncio.create_task(upload_file(client, entity, file, progress)))
         await asyncio.gather(*tasks)
+    return
+    for task in tasks:
+        message: Message = task.result()
+        print(message)
+        message = await client.get_messages(entity, ids=message.id)
+        print(type(message))
+        await client.download_media(message, file=message.file.name)
 
 
 

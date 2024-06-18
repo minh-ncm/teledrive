@@ -9,3 +9,5 @@ LOCAL_UPLOAD_DIR = os.path.join(LOCAL_WORK_DIR, "upload")
 LOCAL_DOWNLOAD_DIR = os.path.join(LOCAL_WORK_DIR, "download")
 
 LOCAL_TEMP_DIR = "tmp"
+
+CHUNK_PART_NAME_FORMAT = ".{chunk_index:03d}"
