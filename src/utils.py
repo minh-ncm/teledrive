@@ -21,7 +21,7 @@ def get_progress_callback(progress: Progress, label: str, total: int):
 def is_tracked_file_in_db(file: FileChunk):
     engine = get_engine()
     with Session(engine) as session:
-        tracked_file = session.query(FileModel).filter_by(og_name=file.og_name, path=file.path).first()
+        tracked_file = session.query(FileModel).filter_by(og_name=file.og_name, namespace=file.namespace).first()
         if tracked_file is None:
             return False
         return True
@@ -30,10 +30,10 @@ def is_tracked_file_in_db(file: FileChunk):
 def track_upload_file_to_db(file: FileChunk):
     engine = get_engine()
     with Session(engine) as session:
-        new_file = FileModel(og_name=file.og_name, path=file.path, tele_id=file.tele_id)
+        new_file = FileModel(og_name=file.og_name, chunk_name=file.chunk_name, namespace=file.namespace, tele_id=file.tele_id)
         session.add(new_file)
         session.commit()
-        logger.info(f"Tracked: {new_file}")
+        logger.info(f"Tracked: {file.chunk_name}")
 
 
 def create_local_path(path):
