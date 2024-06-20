@@ -1,7 +1,7 @@
 import asyncio
 import os
 import math
-from typing import List, AsyncIterator
+from typing import List, AsyncGenerator
 from telethon import TelegramClient
 from telethon.tl.types import PeerChat
 from telethon.hints import EntityLike, MessageLike
@@ -21,7 +21,7 @@ class UploadClient:
         self._client = client
 
     
-    async def _split_file_into_chunks(self, file_path: str, namespace: str) -> AsyncIterator[FileChunk]:
+    async def _split_file_into_chunks(self, file_path: str, namespace: str) -> AsyncGenerator[FileChunk, None]:
         """
         Split file into multiple chunks if larger than FILE_MAX_SIZE. Chunks will be saved in LOCAL_TEMP_DIR/namespace dir
 
@@ -93,15 +93,17 @@ class UploadClient:
         logger.info(f"Removed {file.chunk_name} chunk")
         return message
 
-    async def upload(self):
+    async def upload(self, asynchronous: bool = False):
         entity = await self._client.get_entity(PeerChat(settings.CHAT_ID))
         for info in upload_list:
             file_chunks = self._split_file_into_chunks(info.path, info.namespace)
             with Progress() as progress:
                 tasks: List[asyncio.Task] = []
                 async for file in file_chunks:
-                    await self._upload_file(entity, file, progress)
-                    # tasks.append(asyncio.create_task(self._upload_file(entity, file, progress)))
+                    if asynchronous:
+                        tasks.append(asyncio.create_task(self._upload_file(entity, file, progress)))
+                    else:
+                        await self._upload_file(entity, file, progress)
                 await asyncio.gather(*tasks)
             logger.info(f"Complete upload all chunks of {info.path}")
 
@@ -110,22 +112,42 @@ class DownloadClient:
     def __init__(self, client: TelegramClient):
         self._client = client
 
-    async def download(self, file_name: str, namespace: str):
+    async def download(self, asynchronous: bool = False):
+        entity = await self._client.get_entity(PeerChat(settings.CHAT_ID))
         for info in download_list:
             with Progress() as progress:
+                tracked_chunks = utils.get_file_tracked_chunks(info.og_name, info.namespace)
+                chunks = []
+                async for chunk in tracked_chunks:
+                    if asynchronous:
+                        tasks.append(asyncio.create_task(self._download_file(entity, chunk, progress)))
+                    else:
+                        await self._download_file(entity, chunk, progress)
+                    chunks.append(chunk)
                 tasks: List[asyncio.Task] = []
                 await asyncio.gather(*tasks)
+            logger.info(f"Complete download all chunks of {info.og_name}")
+            self._join_chunks_to_file(chunks)
 
 
-    def join_chunks_to_file(file_parts_path: List[str]):
-        with open("joined.mp4", 'wb') as joined_file:
-            for path in file_parts_path:
-                with open(path, 'rb') as f:
+    def _join_chunks_to_file(self, chunks: List[FileModel]):
+        if len(chunks) <= 1:
+            logger.warning(f"No need to join {len(chunks)} chunk")
+        first_file = chunks[0]
+        output_dir = os.path.join(constants.LOCAL_TEMP_DIR, first_file.namespace)
+        with open(os.path.join(output_dir, first_file.og_name), 'wb') as joined_file:
+            for path in chunks:
+                logger.info(f"Joining {path.chunk_name}")
+                with open(os.path.join(output_dir, path.chunk_name), 'rb') as f:
                     joined_file.write(f.read())
+                os.remove(os.path.join(output_dir, path.chunk_name))
+                logger.info(f"Removed {path.chunk_name}")
+        logger.info(f"Joined all chunks for {first_file.og_name} in {output_dir}")
 
 
-    async def download_file(telegram_client: TelegramClient, entity: PeerChat, message_id: int, file: FileModel) -> MessageLike:
-        message: MessageLike = await telegram_client.get_messages(entity=entity, ids=message_id)
-        chunk_path = os.path.join(file.namespace, file.chunk_name)
-        telegram_client.download_media(message, file=chunk_path)
+    async def _download_file(self, entity: PeerChat, file: FileModel, progress: Progress) -> MessageLike:
+        message: MessageLike = await self._client.get_messages(entity, ids=file.tele_id)
+        progress_callback = utils.get_progress_callback(progress, f"Downloading {file.chunk_name}", message.file.size)
+        chunk_path = os.path.join(constants.LOCAL_TEMP_DIR, file.namespace, file.chunk_name)
+        await self._client.download_media(message, file=chunk_path, progress_callback=progress_callback)
         logger.info(f"Downloaded to {chunk_path}")

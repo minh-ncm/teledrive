@@ -1,5 +1,7 @@
 from pathlib import Path
 from sqlalchemy.orm import Session
+import sqlalchemy as sql
+from typing import AsyncGenerator
 from rich.progress import Progress
 from database import get_engine
 from models import FileChunk, FileModel
@@ -21,7 +23,8 @@ def get_progress_callback(progress: Progress, label: str, total: int):
 def is_tracked_file_in_db(file: FileChunk):
     engine = get_engine()
     with Session(engine) as session:
-        tracked_file = session.query(FileModel).filter_by(og_name=file.og_name, namespace=file.namespace).first()
+        stmt = sql.select(FileModel).where(FileModel.og_name == file.og_name, FileModel.namespace == file.namespace)
+        tracked_file = session.scalar(stmt)
         if tracked_file is None:
             return False
         return True
@@ -34,6 +37,14 @@ def track_upload_file_to_db(file: FileChunk):
         session.add(new_file)
         session.commit()
         logger.info(f"Tracked: {file.chunk_name}")
+
+
+async def get_file_tracked_chunks(og_name: str, namespace: str) -> AsyncGenerator[FileModel, None]:
+    engine = get_engine()
+    with Session(engine) as session:
+        stmt = sql.select(FileModel).where(FileModel.og_name == og_name, FileModel.namespace == namespace).order_by(FileModel.chunk_name)
+        for file in session.scalars(stmt):
+            yield file
 
 
 def create_local_path(path):

@@ -1,8 +1,11 @@
 from telethon import TelegramClient
-from telethon.tl.types import PeerChat
 from settings import settings
 from logger import get_logger
 from client import UploadClient
+import telethon
+
+telethon.errors.rpc_errors_re += (('FLOOD_PREMIUM_WAIT_(\\d+)', telethon.errors.FloodWaitError),)
+
 
 
 logger = get_logger(__name__)
@@ -15,14 +18,8 @@ client = TelegramClient(
 
 async def main():
     await client.start()
-    # upload_client = UploadClient(client)
-    # await upload_client.upload()
-
-    entity = PeerChat(4245312988)
-    message = await client.get_messages(entity, ids=7059)
-    print(type(message))
-    await client.download_media(message, file=message.file.name)
-
+    upload_client = UploadClient(client)
+    await upload_client.upload()
 
 
 if __name__ == '__main__':

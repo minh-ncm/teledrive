@@ -19,7 +19,7 @@ class UploadList(RootModel):
 
 
 class DownloadInfo(BaseModel):
-    name: str
+    og_name: str
     namespace: str
 
 
