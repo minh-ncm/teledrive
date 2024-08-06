@@ -41,10 +41,14 @@ class ClientManager(metaclass=Singleton):
         download_client = DownloadClient(self.get_client())
         download_client.download(chunk, delete_after)
 
-    def upload_chunk(self, namespace: str, file_chunk: FileChunk):
+    def upload_chunk(self, namespace: str, file_chunk: FileChunk) -> bool:
         logger.info(f"Preparing to upload: {file_chunk.chunk_name} to {namespace}")
         upload_client = UploadClient(self.get_client())
-        upload_client.upload(file_chunk)
+        message = upload_client.upload(file_chunk)
+        if message:
+            return True
+        else:
+            return False
 
     def cleanup_upload(self, upload_path: str, is_folder: bool = False):
         logger.info(f"Complete upload all chunks of {upload_path}")
@@ -74,10 +78,11 @@ class UploadClient:
 
         return message
 
-    def upload(self, chunk: FileChunk):
+    def upload(self, chunk: FileChunk) -> MessageLike:
         entity = self._client.get_entity(PeerChat(settings.CHAT_ID))
         callback_manager = PySideProgressBarDialogCallback()
-        self._upload_file(entity, chunk, callback_manager.get_progess_dialog_callback(chunk.chunk_name))
+        message = self._upload_file(entity, chunk, callback_manager.get_progess_dialog_callback(chunk.chunk_name))
+        return message
 
 
 class DownloadClient:

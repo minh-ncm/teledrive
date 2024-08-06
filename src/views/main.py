@@ -101,16 +101,19 @@ class MainView(QWidget):
             for path in file_paths:
                 file_chunks = utils.split_file_into_chunks(path, dialog.namespace)
                 for chunk in file_chunks:
-                    # Create progress dialog
-                    progress_dialog = QProgressDialog(f"Uploading {chunk.chunk_name}", "Cancel", 0, chunk.size, self)
-                    progress_dialog.setWindowModality(Qt.WindowModality.WindowModal)
-
-                    # Add progress dialog to manager
-                    callback_manager = PySideProgressBarDialogCallback()
-                    callback_manager.add_progress_dialog(progress_dialog, chunk.chunk_name)
-
                     # Upload chunk
-                    manager.upload_chunk(dialog.namespace, chunk)
+                    is_uploading = manager.upload_chunk(dialog.namespace, chunk)
+
+                    if is_uploading:
+                        # Create progress dialog
+                        progress_dialog = QProgressDialog(
+                            f"Uploading {chunk.chunk_name}", "Cancel", 0, chunk.size, self
+                        )
+                        progress_dialog.setWindowModality(Qt.WindowModality.WindowModal)
+
+                        # Add progress dialog to manager
+                        callback_manager = PySideProgressBarDialogCallback()
+                        callback_manager.add_progress_dialog(progress_dialog, chunk.chunk_name)
 
                     # Delete chunk file after upload
                     chunk_path = os.path.join(constants.LOCAL_TEMP_DIR, chunk.namespace, chunk.chunk_name)
@@ -134,16 +137,18 @@ class MainView(QWidget):
             manager = ClientManager()
             file_chunks = utils.split_file_into_chunks(folder_path, dialog.namespace)
             for chunk in file_chunks:
-                # Create progress dialog
-                progress_dialog = QProgressDialog(f"Uploading {chunk.chunk_name}", "Cancel", 0, chunk.size, self)
-                progress_dialog.setWindowModality(Qt.WindowModality.WindowModal)
-
-                # Add progress dialog to manager
-                callback_manager = PySideProgressBarDialogCallback()
-                callback_manager.add_progress_dialog(progress_dialog, chunk.chunk_name)
-
                 # Upload chunk
-                manager.upload_chunk(dialog.namespace, chunk, False)
+                is_uploading = manager.upload_chunk(dialog.namespace, chunk, False)
+
+                if is_uploading:
+                    # Create progress dialog
+                    progress_dialog = QProgressDialog(f"Uploading {chunk.chunk_name}", "Cancel", 0, chunk.size, self)
+                    progress_dialog.setWindowModality(Qt.WindowModality.WindowModal)
+
+                    # Add progress dialog to manager
+                    callback_manager = PySideProgressBarDialogCallback()
+                    callback_manager.add_progress_dialog(progress_dialog, chunk.chunk_name)
+
             # Clean up temp zip of folder
             manager.cleanup_upload(folder_path, True)
 
