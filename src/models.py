@@ -1,8 +1,9 @@
-from uuid import uuid4
-from typing import Optional
-from sqlalchemy.orm import DeclarativeBase, mapped_column
-import sqlalchemy
+# -*- coding: utf-8 -*-
 from dataclasses import dataclass
+from typing import Optional
+
+import sqlalchemy
+from sqlalchemy.orm import DeclarativeBase, mapped_column
 
 
 @dataclass
@@ -12,7 +13,6 @@ class FileChunk:
     namespace: str
     size: int
     tele_id: Optional[int] = 0
-
 
 
 class Base(DeclarativeBase):
@@ -27,3 +27,4 @@ class FileModel(Base):
     chunk_name = mapped_column(sqlalchemy.String())
     namespace = mapped_column(sqlalchemy.String())
     tele_id = mapped_column(sqlalchemy.Integer())
+    size = mapped_column(sqlalchemy.Integer())

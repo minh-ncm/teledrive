@@ -1,0 +1,38 @@
+repos:
+  - repo: https://github.com/pdm-project/pdm
+    rev: 2.15.1 # a PDM release exposing the hook
+    hooks:
+      - id: pdm-export
+        # command arguments, e.g.:
+        args: ['-o', 'requirements.txt', '--pyproject', '--without-hashes', '--no-markers']
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v3.4.0
+    hooks:
+      - id: trailing-whitespace
+      - id: check-merge-conflict
+      - id: fix-encoding-pragma
+      - id: check-yaml
+        args: [ --unsafe ]
+  - repo: https://github.com/pre-commit/mirrors-isort
+    rev: v5.8.0
+    hooks:
+      - id: isort
+        args:
+          - "--profile=black"
+          - "--filter-files"
+          - "--line-length=120"
+  - repo: https://github.com/pycqa/flake8
+    rev: 3.9.2
+    hooks:
+      - id: flake8
+        additional_dependencies: [ flake8-typing-imports==1.10.0 ]
+        args:
+          - "--per-file-ignores=__init__.py:F401"
+          - "--max-line-length=120"
+          - "--extend-ignore=E203,E701,E704,F841"
+  - repo: https://github.com/ambv/black
+    rev: 22.3.0
+    hooks:
+      - id: black
+        args:
+          - "--line-length=120"

@@ -13,7 +13,8 @@ dependencies = [
     "pydantic-settings>=2.3.3",
     "rich>=13.7.1",
     "cryptg>=0.4.0",
-    "telegram-upload>=0.7.1",
+    "pyinstaller>=6.8.0",
+    "pre-commit>=3.7.1",
 ]
 requires-python = "<3.13,>=3.10.0"
 readme = "README.md"
@@ -22,3 +23,7 @@ license = {text = "MIT"}
 
 [tool.pdm]
 distribution = false
+
+[tool.pdm.dev-dependencies]
+dev = [
+]
