@@ -3,6 +3,8 @@ Teledrive is a versatile application that facilitates the upload and download of
 
 # Installation
 ### Download executeable file
+- Go to [releases](https://github.com/minh-ncm/teledrive/releases) pages and download `teledrive.zip`
+
 ### Create executeable yourself
 If you want to customize the source code and create an executable file just run the following command: `pyinstaller -y --noconsole src/teledrive.py`
 
