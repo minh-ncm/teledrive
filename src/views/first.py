@@ -60,6 +60,8 @@ class FirstTimeView(QWidget):
                     logger.info("Saved configs.")
 
     def _save_configs(self, api_app_id, api_app_hash, phone_number, chat_id):
+        if isinstance(chat_id, int) and chat_id < 0:
+            chat_id = abs(chat_id)
         json.dump(
             {
                 "API_APP_ID": api_app_id,

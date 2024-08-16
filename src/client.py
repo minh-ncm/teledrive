@@ -29,12 +29,17 @@ class ClientManager(metaclass=Singleton):
 
         if self.client is None:
             self.client = TelegramClient("anon", api_id, api_hash)
+            logger.info("Client created")
         else:
             logger.info("Client already created")
 
     def get_client(self):
         if self.client and not self.client.is_connected():
+            logger.info("Connecting client")
             self.client.connect()
+            logger.info("Client connected")
+        if self.client is None:
+            logger.warning("Getting empty client")
         return self.client
 
     def download_chunk(self, chunk: FileModel, delete_after: bool = False):
@@ -63,18 +68,13 @@ class UploadClient:
 
     def _upload_file(self, entity: EntityLike, file: FileChunk, progress_callback: Callable) -> MessageLike:
         chunk_path = os.path.join(constants.LOCAL_TEMP_DIR, file.namespace, file.chunk_name)
-
-        if utils.is_tracked_file_in_db(file):
-            logger.warn(f"Already tracked: {file.chunk_name}.")
-            message = None
-        else:
-            message = self._client.send_file(
-                entity, open(chunk_path, "rb"), progress_callback=progress_callback, force_document=True
-            )
-            file.tele_id = message.id
-            # Store uploaded file's info in db
-            utils.track_upload_file_to_db(file)
-            logger.info(f"Uploaded: {file.chunk_name} chunk")
+        message = self._client.send_file(
+            entity, open(chunk_path, "rb"), progress_callback=progress_callback, force_document=True
+        )
+        file.tele_id = message.id
+        # Store uploaded file's info in db
+        utils.track_upload_file_to_db(file)
+        logger.info(f"Uploaded: {file.chunk_name} chunk")
 
         return message
 
