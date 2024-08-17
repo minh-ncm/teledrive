@@ -96,6 +96,7 @@ def untrack_chunks_in_db(og_name: str, namespace: str):
 
 
 def create_zip_file(path: str, namespace: str):
+    logger.info("Creating zip file")
     zip_dir_from = path
     zip_dir_name = os.path.split(path)[-1]
 

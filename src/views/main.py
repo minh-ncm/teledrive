@@ -150,10 +150,10 @@ class MainView(QWidget):
                     callback_manager.add_progress_dialog(progress_dialog, chunk.chunk_name)
 
                     # Upload chunk
-                    manager.upload_chunk(dialog.namespace, chunk, False)
+                    manager.upload_chunk(dialog.namespace, chunk)
 
             # Clean up temp zip of folder
-            manager.cleanup_upload(folder_path, True)
+            manager.cleanup_upload(chunk.get_local_path(), True)
 
             # Add uploaded folder zip to UI list
             og_name = os.path.basename(folder_path)

@@ -1,7 +1,7 @@
 [project]
 name = "teledrive"
-version = "0.1.0"
-description = "Default template for PDM package"
+version = "0.1.1"
+description = "Teledrive: Use Telegram as a cloud drive"
 authors = [
     {name = "mingnh", email = "minh.ncm.201@gmail.com"},
 ]

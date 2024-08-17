@@ -24,7 +24,9 @@ If you want to customize the source code and create an executable file just run 
 3. Uploading
 - Click at upload on the menu bar and select files you want to backup
 - Enter the namespace. This will act download location with root from the download folder
-# ROADMAP
-- [] Clean up code
+# TODO List
+- [] Show popup when zipping files
 - [] Handle progress bar cancel actions
+- [] Add action on menu bar for login
+- [] Add action on menu bar to change group chat as teledrive
 - [] Enhance UI
