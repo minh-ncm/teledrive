@@ -16,7 +16,7 @@ class Settings(BaseSettings):
     CHAT_ID: Optional[int] = None
 
 
-class DownloadInfo(BaseModel):
+class ChunkInfo(BaseModel):
     og_name: str
     namespace: str
 

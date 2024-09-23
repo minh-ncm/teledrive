@@ -28,7 +28,7 @@ class ClientManager(metaclass=Singleton):
             logger.error("API Hash cannot be None")
 
         if self.client is None:
-            self.client = TelegramClient("anon", api_id, api_hash)
+            self.client = TelegramClient(constants.TELEGRAM_SESSION_NAME, api_id, api_hash)
             logger.info("Client created")
         else:
             logger.info("Client already created")

@@ -5,6 +5,7 @@ from PySide6.QtGui import QAction
 from PySide6.QtWidgets import QMainWindow, QStackedLayout, QWidget
 
 from client import ClientManager
+from constants import TELEGRAM_SESSION_NAME
 from settings import settings
 from views import FirstTimeView, MainView
 
@@ -21,7 +22,7 @@ class MainWindow(QMainWindow):
         layout = QStackedLayout()
 
         if not settings:
-            Path("anon.session").unlink(True)
+            Path(f"{TELEGRAM_SESSION_NAME}.session").unlink(True)
             first_time_view = FirstTimeView(self)
             layout.addWidget(first_time_view)
         else:
@@ -44,6 +45,10 @@ class MainWindow(QMainWindow):
         self.download_action = QAction(text="Download", parent=self)
         download_menu = menu.addAction(self.download_action)
         self.download_action.triggered.connect(main_view._download_selected_checkboxes)
+
+        self.untrack_action = QAction(text="Delete", parent=self)
+        untrack_menu = menu.addAction(self.untrack_action)
+        self.untrack_action.triggered.connect(main_view._untracked_selected_checkboxes)
 
         self.setWindowTitle("Teledrive")
 

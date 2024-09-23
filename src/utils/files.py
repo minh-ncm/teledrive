@@ -112,7 +112,9 @@ def list_tracked_file() -> List[FileModel]:
     engine = get_engine()
     with Session(engine) as session:
         stmt = (
-            sql.select(FileModel.og_name, FileModel.namespace).group_by(FileModel.og_name).order_by(FileModel.namespace)
+            sql.select(FileModel.og_name, FileModel.namespace)
+            .group_by(FileModel.namespace, FileModel.og_name)
+            .order_by(FileModel.namespace)
         )
         result = []
         for og_name, namespace in session.execute(stmt).all():

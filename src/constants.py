@@ -16,3 +16,5 @@ FILE_NAME_DOWNLOAD = "download.json"
 
 PROGRESS_BAR_PYSIDE = "pyside"
 PROGRESS_BAR_RICH = "rich"
+
+TELEGRAM_SESSION_NAME = "anon"
