@@ -72,6 +72,7 @@ class UploadClient:
             entity, open(chunk_path, "rb"), progress_callback=progress_callback, force_document=True
         )
         file.tele_id = message.id
+        file.size = message.document.size
         # Store uploaded file's info in db
         utils.track_upload_file_to_db(file)
         logger.info(f"Uploaded: {file.chunk_name} chunk")

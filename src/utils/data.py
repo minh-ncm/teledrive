@@ -17,7 +17,7 @@ def update_chunk_size():
 
     engine = get_engine()
     with Session(engine) as session:
-        stmt = select(FileModel).where(FileModel.size is None)
+        stmt = select(FileModel).where(FileModel.size == None)  # noqa
         result = session.execute(stmt)
 
         for chunk in result.scalars():
