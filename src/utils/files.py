@@ -58,7 +58,11 @@ def track_upload_file_to_db(file: FileChunk):
     engine = get_engine()
     with Session(engine) as session:
         new_file = FileModel(
-            og_name=file.og_name, chunk_name=file.chunk_name, namespace=file.namespace, tele_id=file.tele_id
+            og_name=file.og_name,
+            chunk_name=file.chunk_name,
+            namespace=file.namespace,
+            tele_id=file.tele_id,
+            size=file.size,
         )
         session.add(new_file)
         session.commit()
@@ -159,21 +163,15 @@ def split_file_into_chunks(file_path: str, namespace: str) -> Generator[FileChun
         # Move cursor to the beginning of the next chunk
         chunk_cursor_index = chunk_index * constants.FILE_MAX_SIZE
         f.seek(chunk_cursor_index)
-
-        # Add chunk index to file name if there is more than one chunk
-        if total_chunks <= 1:
-            chunk_name = f"{file_name}{file_ext}"
-        else:
-            chunk_name = f"{file_name}.{chunk_index:03d}{file_ext}"
+        chunk_name = f"{file_name}.{chunk_index:03d}{file_ext}"
 
         # Write the chunk to disk
         chunk_path = os.path.join(chunk_output_dir, chunk_name)
         chunk_size = min(constants.FILE_MAX_SIZE, remain_size)
 
-        if total_chunks > 1:
-            with open(chunk_path, "wb") as part_file:
-                chunk = f.read(chunk_size)
-                part_file.write(chunk)
+        with open(chunk_path, "wb") as part_file:
+            chunk = f.read(chunk_size)
+            part_file.write(chunk)
 
         # Calculate remaining size for reading final chunk
         remain_size = file_size - (chunk_index + 1) * constants.FILE_MAX_SIZE
