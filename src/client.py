@@ -55,11 +55,9 @@ class ClientManager(metaclass=Singleton):
         else:
             return False
 
-    def cleanup_upload(self, upload_path: str, is_folder: bool = False):
-        logger.info(f"Complete upload all chunks of {upload_path}")
-        if is_folder:
-            os.remove(upload_path)
-            logger.info("Removed zip file")
+    def disconnect_client(self):
+        if self.client and self.client.is_connected():
+            self.client.disconnect()
 
 
 class UploadClient:

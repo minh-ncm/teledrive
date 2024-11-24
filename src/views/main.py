@@ -3,7 +3,18 @@ import os
 from typing import List
 
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QFileDialog, QListWidget, QListWidgetItem, QProgressDialog, QVBoxLayout, QWidget
+from PySide6.QtWidgets import (
+    QAbstractItemView,
+    QFileDialog,
+    QFileSystemModel,
+    QListView,
+    QListWidget,
+    QListWidgetItem,
+    QProgressDialog,
+    QTreeView,
+    QVBoxLayout,
+    QWidget,
+)
 from telethon.tl.types import PeerChat
 
 import constants
@@ -15,6 +26,11 @@ from utils.pyside import PySideProgressBarDialogCallback
 from widgets.dialogs import ConfirmDownloadDialog, UploadNamespaceDialog
 
 logger = get_logger(__name__)
+
+
+def cancel_upload():
+    client_manager = ClientManager()
+    # client_manager.disconnect_client()
 
 
 class MainView(QWidget):
@@ -57,6 +73,8 @@ class MainView(QWidget):
                             f"Uploading {chunk.chunk_name}", "Cancel", 0, chunk.size, self
                         )
                         progress_dialog.setWindowModality(Qt.WindowModality.WindowModal)
+                        progress_dialog.canceled.connect(cancel_upload)
+
                         # Add progress dialog to manager
                         callback_manager = PySideProgressBarDialogCallback()
                         callback_manager.add_progress_dialog(progress_dialog, chunk.chunk_name)
@@ -68,57 +86,67 @@ class MainView(QWidget):
                     chunk_path = os.path.join(constants.LOCAL_TEMP_DIR, chunk.namespace, chunk.chunk_name)
                     os.remove(chunk_path)
                     logger.info(f"Removed {chunk.chunk_name} chunk")
-                # Clean up temp zip of folder
-                manager.cleanup_upload(path, False)
 
                 # Add uploaded file to UI list
                 og_name = os.path.basename(path)
+                logger.info(f"Completed upload {og_name}")
                 file_widget = QListWidgetItem(f"{dialog.namespace}/{og_name}")
                 self.file_widgets.addItem(file_widget)
                 file_widget.setFlags(Qt.ItemFlag.ItemIsUserCheckable)
                 file_widget.setCheckState(Qt.CheckState.Unchecked)
 
     def _select_folder_to_upload(self):
-        folder_path = QFileDialog.getExistingDirectory(self)
+        file_dialog = QFileDialog()
+        file_dialog.setFileMode(QFileDialog.FileMode.Directory)
+        file_dialog.setOption(QFileDialog.Option.DontUseNativeDialog, True)
+        for widget_type in (QListView, QTreeView):
+            for view in file_dialog.findChildren(widget_type):
+                if isinstance(view.model(), QFileSystemModel):
+                    view.setSelectionMode(QAbstractItemView.ExtendedSelection)
+        file_dialog.exec()
+        folder_paths = file_dialog.selectedFiles()
+
+        # folder_path = QFileDialog.getExistingDirectory(self)
         # Exit if no folder selected
-        if not folder_path:
+        if not folder_paths:
             return
         dialog = UploadNamespaceDialog(self)
         dialog_result = dialog.exec()
         if dialog_result == dialog.DialogCode.Accepted:
             manager = ClientManager()
-            file_chunks = utils.split_file_into_chunks(folder_path, dialog.namespace)
-            for chunk in file_chunks:
-                if utils.is_tracked_file_in_db(chunk):
-                    logger.warn(f"Already tracked: {chunk.chunk_name}.")
-                else:
-                    # Create progress dialog
-                    progress_dialog = QProgressDialog(f"Uploading {chunk.chunk_name}", "Cancel", 0, chunk.size, self)
-                    progress_dialog.setWindowModality(Qt.WindowModality.WindowModal)
+            for folder_path in folder_paths:
+                file_chunks = utils.split_file_into_chunks(folder_path, dialog.namespace)
+                for chunk in file_chunks:
+                    if utils.is_tracked_file_in_db(chunk):
+                        logger.warn(f"Already tracked: {chunk.chunk_name}.")
+                    else:
+                        # Create progress dialog
+                        progress_dialog = QProgressDialog(
+                            f"Uploading {chunk.chunk_name}", "Cancel", 0, chunk.size, self
+                        )
+                        progress_dialog.setWindowModality(Qt.WindowModality.WindowModal)
+                        progress_dialog.canceled.connect(cancel_upload)
 
-                    # Add progress dialog to manager
-                    callback_manager = PySideProgressBarDialogCallback()
-                    callback_manager.add_progress_dialog(progress_dialog, chunk.chunk_name)
+                        # Add progress dialog to manager
+                        callback_manager = PySideProgressBarDialogCallback()
+                        callback_manager.add_progress_dialog(progress_dialog, chunk.chunk_name)
 
-                    # Upload chunk
-                    manager.upload_chunk(dialog.namespace, chunk)
+                        # Upload chunk
+                        manager.upload_chunk(dialog.namespace, chunk)
 
-                # Only delete if chunk is split since the file hasn't close
-                chunk_number = chunk.get_chunk_number()
-                if chunk_number:
                     # Delete chunk file after upload
                     chunk_path = os.path.join(constants.LOCAL_TEMP_DIR, chunk.namespace, chunk.chunk_name)
                     os.remove(chunk_path)
                     logger.info(f"Removed {chunk.chunk_name} chunk")
 
-            manager.cleanup_upload(chunk.get_local_path(), True)
+                os.remove(chunk.get_local_path())
 
-            # Add uploaded folder zip to UI list
-            og_name = os.path.basename(folder_path)
-            file_widget = QListWidgetItem(f"{dialog.namespace}/{og_name}.zip")
-            self.file_widgets.addItem(file_widget)
-            file_widget.setFlags(Qt.ItemFlag.ItemIsUserCheckable)
-            file_widget.setCheckState(Qt.CheckState.Unchecked)
+                # Add uploaded folder zip to UI list
+                og_name = os.path.basename(folder_path)
+                file_widget = QListWidgetItem(f"{dialog.namespace}/{og_name}.zip")
+                self.file_widgets.addItem(file_widget)
+                file_widget.setFlags(Qt.ItemFlag.ItemIsUserCheckable)
+                file_widget.setCheckState(Qt.CheckState.Unchecked)
 
     def _select_checkbox(self, clicked_item: QListWidgetItem, *args, **kwargs):
         if clicked_item.checkState() == Qt.CheckState.Checked:
