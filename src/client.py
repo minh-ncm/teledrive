@@ -49,10 +49,14 @@ class ClientManager(metaclass=Singleton):
     def upload_chunk(self, namespace: str, file_chunk: FileChunk) -> bool:
         logger.info(f"Preparing to upload: {file_chunk.chunk_name} to {namespace}")
         upload_client = UploadClient(self.get_client())
-        message = upload_client.upload(file_chunk)
-        if message:
-            return True
-        else:
+        try:
+            message = upload_client.upload(file_chunk)
+            if message:
+                return True
+            else:
+                return False
+        except Exception as e:
+            logger.error(f"Upload failed: {e}")
             return False
 
     def disconnect_client(self):
@@ -66,18 +70,25 @@ class UploadClient:
 
     def _upload_file(self, entity: EntityLike, file: FileChunk, progress_callback: Callable) -> MessageLike:
         chunk_path = os.path.join(constants.LOCAL_TEMP_DIR, file.namespace, file.chunk_name)
-        message = self._client.send_file(
-            entity, open(chunk_path, "rb"), progress_callback=progress_callback, force_document=True
-        )
-        file.tele_id = message.id
-        file.size = message.document.size
-        # Store uploaded file's info in db
-        utils.track_upload_file_to_db(file)
-        logger.info(f"Uploaded: {file.chunk_name} chunk")
+        try:
+            message = self._client.send_file(
+                entity, open(chunk_path, "rb"), progress_callback=progress_callback, force_document=True
+            )
+            file.tele_id = message.id
+            file.size = message.document.size
+            # Store uploaded file's info in db
+            utils.track_upload_file_to_db(file)
+            logger.info(f"Uploaded: {file.chunk_name} chunk")
+            return message
+        except Exception as e:
+            if "canceled by user" in str(e).lower():
+                logger.info(f"Upload of {file.chunk_name} was canceled by user")
+                return None
+            else:
+                logger.error(f"Error uploading {file.chunk_name}: {e}")
+                raise
 
-        return message
-
-    def upload(self, chunk: FileChunk) -> MessageLike:
+    def upload(self, chunk: FileChunk) -> MessageLike | None:
         entity = self._client.get_entity(PeerChat(settings.CHAT_ID))
         callback_manager = PySideProgressBarDialogCallback()
         message = self._upload_file(entity, chunk, callback_manager.get_progess_dialog_callback(chunk.chunk_name))

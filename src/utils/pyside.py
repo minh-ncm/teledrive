@@ -16,7 +16,12 @@ class PySideProgressBarDialogCallback(metaclass=Singleton):
 
     def get_progess_dialog_callback(self, name: str):
         def progress_callback(sent_bytes, total):
-            self.progress_dialogs[name].setValue(sent_bytes)
+            if name in self.progress_dialogs:
+                dialog = self.progress_dialogs[name]
+                # Check if the dialog was canceled by the user
+                if dialog.wasCanceled():
+                    raise Exception("Upload/Download canceled by user")
+                dialog.setValue(sent_bytes)
 
         if name not in self.progress_dialogs:
             return None

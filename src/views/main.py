@@ -33,8 +33,14 @@ logger = get_logger(__name__)
 
 
 def cancel_upload():
-    client_manager = ClientManager()
-    # client_manager.disconnect_client()
+    """Cancel the current upload and close the progress dialog."""
+    callback_manager = PySideProgressBarDialogCallback()
+    # Close all progress dialogs
+    for dialog in callback_manager.progress_dialogs.values():
+        if dialog and not dialog.wasCanceled():
+            dialog.cancel()
+    # Clear all dialogs
+    callback_manager.progress_dialogs.clear()
 
 
 class MainView(QWidget):
