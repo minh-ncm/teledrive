@@ -4,6 +4,7 @@ from .files import (
     create_local_path,
     create_zip_file,
     get_file_tracked_chunks,
+    get_tracked_file_count,
     is_tracked_file_in_db,
     join_chunks_to_file,
     list_tracked_file,

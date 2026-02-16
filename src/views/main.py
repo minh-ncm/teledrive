@@ -7,10 +7,14 @@ from PySide6.QtWidgets import (
     QAbstractItemView,
     QFileDialog,
     QFileSystemModel,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
     QListView,
     QListWidget,
     QListWidgetItem,
     QProgressDialog,
+    QPushButton,
     QTreeView,
     QVBoxLayout,
     QWidget,
@@ -34,24 +38,55 @@ def cancel_upload():
 
 
 class MainView(QWidget):
+    ITEMS_PER_PAGE = 50
+
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
 
+        self.current_page = 0
+        self.search_query = ""
+        self.total_items = 0
+
         layout = QVBoxLayout(self)
 
-        tracked_files = utils.list_tracked_file()
+        # Search box section
+        search_layout = QHBoxLayout()
+        search_label = QLabel("Search:")
+        self.search_box = QLineEdit(self)
+        self.search_box.setPlaceholderText("Search by filename or namespace...")
+        self.search_box.textChanged.connect(self._on_search_changed)
+        search_layout.addWidget(search_label)
+        search_layout.addWidget(self.search_box)
+        layout.addLayout(search_layout)
+
+        # File list widget
         self.file_widgets = QListWidget(self)
         layout.addWidget(self.file_widgets)
         self.file_widgets.setSelectionMode(QListWidget.SelectionMode.MultiSelection)
         self.file_widgets.itemClicked.connect(self._select_checkbox)
 
-        for file in tracked_files:
-            file_widget = QListWidgetItem(f"{file.namespace}/{file.og_name}")
-            self.file_widgets.addItem(file_widget)
-            file_widget.setFlags(Qt.ItemFlag.ItemIsUserCheckable)
-            file_widget.setCheckState(Qt.CheckState.Unchecked)
+        # Pagination controls section
+        pagination_layout = QHBoxLayout()
 
+        self.prev_button = QPushButton("← Previous")
+        self.prev_button.clicked.connect(self._previous_page)
+        pagination_layout.addWidget(self.prev_button)
+
+        self.page_info_label = QLabel("Page 1 of 1")
+        self.page_info_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        pagination_layout.addWidget(self.page_info_label)
+
+        self.next_button = QPushButton("Next →")
+        self.next_button.clicked.connect(self._next_page)
+        pagination_layout.addWidget(self.next_button)
+
+        pagination_layout.addStretch()
+
+        layout.addLayout(pagination_layout)
         self.setLayout(layout)
+
+        # Load initial data
+        self._load_page()
 
     def _select_files_to_upload(self):
         file_paths, extension_desc = QFileDialog.getOpenFileNames(self)
@@ -90,10 +125,8 @@ class MainView(QWidget):
                 # Add uploaded file to UI list
                 og_name = os.path.basename(path)
                 logger.info(f"Completed upload {og_name}")
-                file_widget = QListWidgetItem(f"{dialog.namespace}/{og_name}")
-                self.file_widgets.addItem(file_widget)
-                file_widget.setFlags(Qt.ItemFlag.ItemIsUserCheckable)
-                file_widget.setCheckState(Qt.CheckState.Unchecked)
+                # Reload the page to reflect the newly uploaded file
+                self._load_page()
 
     def _select_folder_to_upload(self):
         file_dialog = QFileDialog()
@@ -141,12 +174,64 @@ class MainView(QWidget):
 
                 os.remove(chunk.get_local_path())
 
-                # Add uploaded folder zip to UI list
-                og_name = os.path.basename(folder_path)
-                file_widget = QListWidgetItem(f"{dialog.namespace}/{og_name}.zip")
-                self.file_widgets.addItem(file_widget)
-                file_widget.setFlags(Qt.ItemFlag.ItemIsUserCheckable)
-                file_widget.setCheckState(Qt.CheckState.Unchecked)
+                # Add uploaded folder zip to UI list - reload page to reflect the newly uploaded folder
+                logger.info(f"Completed upload {os.path.basename(folder_path)}.zip")
+                self._load_page()
+
+    def _load_page(self):
+        """Load files for the current page with the current search query."""
+        offset = self.current_page * self.ITEMS_PER_PAGE
+        tracked_files = utils.list_tracked_file(
+            offset=offset, limit=self.ITEMS_PER_PAGE, search_query=self.search_query
+        )
+        self.total_items = utils.get_tracked_file_count(self.search_query)
+
+        # Clear the list widget
+        self.file_widgets.clear()
+
+        # Populate with new files
+        for file in tracked_files:
+            file_widget = QListWidgetItem(f"{file.namespace}/{file.og_name}")
+            self.file_widgets.addItem(file_widget)
+            file_widget.setFlags(Qt.ItemFlag.ItemIsUserCheckable)
+            file_widget.setCheckState(Qt.CheckState.Unchecked)
+
+        # Update pagination info
+        self._update_pagination_info()
+
+    def _update_pagination_info(self):
+        """Update pagination buttons and label."""
+        total_pages = (self.total_items + self.ITEMS_PER_PAGE - 1) // self.ITEMS_PER_PAGE
+        if total_pages == 0:
+            total_pages = 1
+
+        page_display = self.current_page + 1
+        self.page_info_label.setText(f"Page {page_display} of {total_pages}")
+
+        # Enable/disable pagination buttons
+        self.prev_button.setEnabled(self.current_page > 0)
+        self.next_button.setEnabled(self.current_page < total_pages - 1)
+
+    def _previous_page(self):
+        """Go to previous page."""
+        if self.current_page > 0:
+            self.current_page -= 1
+            self._load_page()
+
+    def _next_page(self):
+        """Go to next page."""
+        total_pages = (self.total_items + self.ITEMS_PER_PAGE - 1) // self.ITEMS_PER_PAGE
+        if self.total_items == 0:
+            total_pages = 1
+        if self.current_page < total_pages - 1:
+            self.current_page += 1
+            self._load_page()
+
+    def _on_search_changed(self, text: str):
+        """Handle search query changes."""
+        self.search_query = text.strip()
+        self.current_page = 0  # Reset to first page when searching
+        self._load_page()
 
     def _select_checkbox(self, clicked_item: QListWidgetItem, *args, **kwargs):
         if clicked_item.checkState() == Qt.CheckState.Checked:
@@ -184,9 +269,8 @@ class MainView(QWidget):
                 utils.untrack_chunks_in_db(info.og_name, info.namespace)
                 logger.info(f"Untracked all chunks of {info.og_name}")
 
-        # Remove untracked files from UI list
-        for item in selected_items:
-            self.file_widgets.takeItem(self.file_widgets.row(item))
+        # Reload page to reflect removed files
+        self._load_page()
 
     def _download_selected_checkboxes(self):
         selected_items = []
@@ -233,5 +317,5 @@ class MainView(QWidget):
                     logger.info(f"Untracked all chunks of {info.og_name}")
 
             if dialog.delete_after:
-                for item in selected_items:
-                    self.file_widgets.takeItem(self.file_widgets.row(item))
+                # Reload page to reflect deleted files
+                self._load_page()

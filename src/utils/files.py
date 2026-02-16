@@ -112,19 +112,75 @@ def create_zip_file(path: str, namespace: str):
     return f"{zip_dir_to}.zip"
 
 
-def list_tracked_file() -> List[FileModel]:
+def list_tracked_file(offset: int = 0, limit: int = 50, search_query: str = "") -> List[FileModel]:
+    """
+    List tracked files with pagination and optional search filtering.
+
+    Args:
+        offset (int): Number of records to skip (for pagination)
+        limit (int): Number of records to return
+        search_query (str): Optional search query to filter by og_name or namespace
+
+    Returns:
+        List[FileModel]: List of tracked files matching the criteria
+    """
     engine = get_engine()
     with Session(engine) as session:
-        stmt = (
-            sql.select(FileModel.og_name, FileModel.namespace)
-            .group_by(FileModel.namespace, FileModel.og_name)
-            .order_by(FileModel.namespace)
-        )
+        stmt = sql.select(FileModel.og_name, FileModel.namespace).group_by(FileModel.namespace, FileModel.og_name)
+
+        # Apply search filter if provided
+        if search_query:
+            stmt = stmt.where(
+                sql.or_(
+                    FileModel.og_name.ilike(f"%{search_query}%"),
+                    FileModel.namespace.ilike(f"%{search_query}%"),
+                )
+            )
+
+        # Apply pagination and ordering
+        stmt = stmt.order_by(FileModel.namespace).offset(offset).limit(limit)
+
         result = []
         for og_name, namespace in session.execute(stmt).all():
             file = FileModel(og_name=og_name, namespace=namespace)
             result.append(file)
     return result
+
+
+def get_tracked_file_count(search_query: str = "") -> int:
+    """
+    Get total count of tracked files (unique og_name + namespace combinations).
+
+    Args:
+        search_query (str): Optional search query to filter by og_name or namespace
+
+    Returns:
+        int: Total count of tracked files matching the criteria
+    """
+    engine = get_engine()
+    with Session(engine) as session:
+        stmt = sql.select(sql.func.count(sql.distinct(sql.func.concat(FileModel.og_name, FileModel.namespace))))
+
+        # Apply search filter if provided
+        if search_query:
+            stmt = sql.select(sql.func.count()).select_from(
+                sql.select(FileModel.og_name, FileModel.namespace)
+                .distinct()
+                .where(
+                    sql.or_(
+                        FileModel.og_name.ilike(f"%{search_query}%"),
+                        FileModel.namespace.ilike(f"%{search_query}%"),
+                    )
+                )
+                .subquery()
+            )
+        else:
+            stmt = sql.select(sql.func.count()).select_from(
+                sql.select(FileModel.og_name, FileModel.namespace).distinct().subquery()
+            )
+
+        count = session.scalar(stmt) or 0
+    return count
 
 
 def split_file_into_chunks(file_path: str, namespace: str) -> Generator[FileChunk, None, None]:
